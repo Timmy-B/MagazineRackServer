@@ -1,0 +1,247 @@
+{
+	"info": {
+		"_postman_id": "9de57586-4ef2-405f-a7a2-915eeaf61031",
+		"name": "Magazine Rack",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "Create Rack",
+			"request": {
+				"method": "PUT",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": ""
+				},
+				"url": {
+					"raw": "localhost:3000/newRack/:database",
+					"host": [
+						"localhost"
+					],
+					"port": "3000",
+					"path": [
+						"newRack",
+						":database"
+					],
+					"variable": [
+						{
+							"key": "database",
+							"value": "test"
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Create Item",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"name": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\nrackName: \"test_123\",\r\nname: \"test 2\",\r\ndescription: \"Test item number 2 blah blach\",\r\npublish_date: \"1984/11/22\"\r\n}"
+				},
+				"url": {
+					"raw": "localhost:3000/newItem/",
+					"host": [
+						"localhost"
+					],
+					"port": "3000",
+					"path": [
+						"newItem",
+						""
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "get all Racks",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": ""
+				},
+				"url": {
+					"raw": "localhost:3000/getRacks/:database",
+					"host": [
+						"localhost"
+					],
+					"port": "3000",
+					"path": [
+						"getRacks",
+						":database"
+					],
+					"variable": [
+						{
+							"key": "database",
+							"value": "test_123"
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "get all Tags",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": ""
+				},
+				"url": {
+					"raw": "localhost:3000/getTags/:database",
+					"host": [
+						"localhost"
+					],
+					"port": "3000",
+					"path": [
+						"getTags",
+						":database"
+					],
+					"variable": [
+						{
+							"key": "database",
+							"value": "test_123"
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "get all Series",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": ""
+				},
+				"url": {
+					"raw": "localhost:3000/getSeries/:database",
+					"host": [
+						"localhost"
+					],
+					"port": "3000",
+					"path": [
+						"getSeries",
+						":database"
+					],
+					"variable": [
+						{
+							"key": "database",
+							"value": "test_123"
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "get all Items",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": ""
+				},
+				"url": {
+					"raw": "localhost:3000/getItems/:database",
+					"host": [
+						"localhost"
+					],
+					"port": "3000",
+					"path": [
+						"getItems",
+						":database"
+					],
+					"variable": [
+						{
+							"key": "database",
+							"value": "test_123"
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "get all Item",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": ""
+				},
+				"url": {
+					"raw": "localhost:3000/getItem/:rackName/:item",
+					"host": [
+						"localhost"
+					],
+					"port": "3000",
+					"path": [
+						"getItem",
+						":rackName",
+						":item"
+					],
+					"variable": [
+						{
+							"key": "rackName",
+							"value": "test_123"
+						},
+						{
+							"key": "item",
+							"value": "1"
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "get all Publishers",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": ""
+				},
+				"url": {
+					"raw": "localhost:3000/getPublishers/:database",
+					"host": [
+						"localhost"
+					],
+					"port": "3000",
+					"path": [
+						"getPublishers",
+						":database"
+					],
+					"variable": [
+						{
+							"key": "database",
+							"value": "test_123"
+						}
+					]
+				}
+			},
+			"response": []
+		}
+	]
+}
