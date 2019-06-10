@@ -1,13 +1,19 @@
+global.racksFolder = "./racks"
 const { createRack,
     getRacks,
     getPublishers,
     getSeries,
     getTags,
     getItems,
-    getItem 
+    getItem,
+    createPublisher,
+    createSeries,
+    createItem
     } = require('./modules/dbOps.js');
-var express = require("express");
-var app = express();
+const glob = require('glob');
+const express = require("express");
+const path = require("path");
+const app = express();
 app.use(express.json())
 app.listen(3000, () => {
     console.log("Server running on port 3000");
@@ -91,3 +97,36 @@ app.get('/getItem/:rackName/:item', (req, res) => {
     })
 
 });
+
+
+glob("**/", {
+    cwd: './racks/test_123'
+}, function (er, folders) {
+    folders.forEach(function (folder) {
+        var folderName = folder.substring(0, folder.lastIndexOf('/'));
+        if (folderName.includes('/')) {
+            var publisher = folder.split('/')[0]
+            var series = path.basename(folder);
+            createSeries(series,publisher)
+            console.log(publisher, series)
+            filesInFolder(folderName)
+        } else {
+            console.log("publisher:", path.basename(folder))
+            createPublisher(path.basename(folder));
+        }
+    })
+})
+
+
+function filesInFolder(folder) {
+
+
+    glob("*.*", {
+        cwd: './racks/test_123/' + folder
+    }, function (er, files) {
+        files.forEach(function (file) {
+            console.log(file)
+        })
+    })
+
+}
