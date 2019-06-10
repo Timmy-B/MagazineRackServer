@@ -1,15 +1,5 @@
 global.racksFolder = "./racks"
-const { createRack,
-    getRacks,
-    getPublishers,
-    getSeries,
-    getTags,
-    getItems,
-    getItem,
-    createPublisher,
-    createSeries,
-    createItem
-    } = require('./modules/dbOps.js');
+const dbOps = require('./modules/dbOps.js');
 const glob = require('glob');
 const express = require("express");
 const path = require("path");
@@ -25,7 +15,7 @@ app.get('/', (req, res) => {
 
 
 app.put('/newRack/:rackName', (req, res) => {
-    createRack(req.params.rackName, function(response){
+    dbOps.createRack(req.params.rackName, function(response){
         return res.send(
             response,
         );
@@ -36,9 +26,8 @@ app.put('/newRack/:rackName', (req, res) => {
 ///temp function for testing 
 app.post('/newItem/', (req, res) => {
     res.json(req.body);
-    console.log(req.body);
-    createItem(req.params, function (response) {
-        console.log(req.params)
+    dbOps.createItem(req.body, function (response) {
+
         return res.send(
             response,
         );
@@ -46,7 +35,7 @@ app.post('/newItem/', (req, res) => {
 });
 
 app.get('/getRacks', (req, res) => {
-    getRacks(req.params.rackName, function(data){
+    dbOps.getRacks(req.params.rackName, function(data){
         return res.json(
             data
         );
@@ -54,7 +43,7 @@ app.get('/getRacks', (req, res) => {
 });
 
 app.get('/getItems/:rackName', (req, res) => {
-    getItems(req.params.rackName, function (data) {
+    dbOps.getItems(req.params.rackName, function (data) {
         return res.json(
             data
         );
@@ -63,7 +52,7 @@ app.get('/getItems/:rackName', (req, res) => {
 });
 
 app.get('/getTags/:rackName', (req, res) => {
-    getTags(req.params.rackName, function (data) {
+    dbOps.getTags(req.params.rackName, function (data) {
         return res.json(
             data
         );
@@ -72,7 +61,7 @@ app.get('/getTags/:rackName', (req, res) => {
 });
 
 app.get('/getSeries/:rackName', (req, res) => {
-    getSeries(req.params.rackName, function (data) {
+    dbOps.getSeries(req.params.rackName, function (data) {
         return res.json(
             data
         );
@@ -81,7 +70,7 @@ app.get('/getSeries/:rackName', (req, res) => {
 });
 
 app.get('/getPublishers/:rackName', (req, res) => {
-    getPublishers(req.params.rackName, function (data) {
+    dbOps.getPublishers(req.params.rackName, function (data) {
         return res.json(
             data
         );
@@ -90,7 +79,8 @@ app.get('/getPublishers/:rackName', (req, res) => {
 });
 
 app.get('/getItem/:rackName/:item', (req, res) => {
-    getItem(req.params, function (data) {
+    
+    dbOps.getItem(req.params, function (data) {
         return res.json(
             data
         );
@@ -98,6 +88,18 @@ app.get('/getItem/:rackName/:item', (req, res) => {
 
 });
 
+app.post('/rmItem/', (req, res) => {
+    res.json(req.body);
+    dbOps.removeItem(req.body, function (response) {
+        return res.send(
+            response,
+        );
+    })
+});
+
+
+
+dbOps.createRack("test_123")
 
 glob("**/", {
     cwd: './racks/test_123'
@@ -107,25 +109,27 @@ glob("**/", {
         if (folderName.includes('/')) {
             var publisher = folder.split('/')[0]
             var series = path.basename(folder);
-            createSeries(series,publisher)
-            console.log(publisher, series)
-            filesInFolder(folderName)
+            dbOps.createSeries(series,publisher)
+            // filesInFolder(folderName)
+            filesInFolder('test_123',folder, publisher, series)
+
         } else {
             console.log("publisher:", path.basename(folder))
-            createPublisher(path.basename(folder));
+            dbOps.createPublisher(path.basename(folder));
         }
     })
 })
 
 
-function filesInFolder(folder) {
-
+function filesInFolder(rackName, folder, publisher, series) {
 
     glob("*.*", {
-        cwd: './racks/test_123/' + folder
+        cwd: `./racks/${rackName}/${folder}`
     }, function (er, files) {
         files.forEach(function (file) {
-            console.log(file)
+            const path = `/${folder}${file}`
+            const params = { rackName: rackName, itemInfo: { name: file, publisher: publisher, description: '', series: series, path: path, publish_date: '' } }
+            dbOps.createItem(params)
         })
     })
 
