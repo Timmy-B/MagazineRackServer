@@ -8,12 +8,24 @@ app.use(express.json())
 app.listen(3000, () => {
     console.log("Server running on port 3000");
 });
-
+app.all('/*', function (req, res, next) {
+    res.header("Access-Control-Allow-Origin", "*");
+    res.header("Access-Control-Allow-Headers", "X-Requested-With");
+    next();
+});
 app.get('/', (req, res) => {
     return res.send('Received a GET HTTP method');
 });
 
 
+app.put('/newRack/:rackName', (req, res) => {
+    dbOps.createRack(req.params.rackName, function(response){
+        return res.send(
+            response,
+        );
+    })
+    
+});
 app.put('/newRack/:rackName', (req, res) => {
     dbOps.createRack(req.params.rackName, function(response){
         return res.send(
@@ -34,8 +46,9 @@ app.post('/newItem/', (req, res) => {
     })
 });
 
-app.get('/getRacks', (req, res) => {
-    dbOps.getRacks(req.params.rackName, function(data){
+app.get('/api/libraries/', (req, res) => {
+    console.log('requesting racks')
+    dbOps.getRacks(function(data){
         return res.json(
             data
         );
