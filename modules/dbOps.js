@@ -89,6 +89,28 @@ function getSeries(rackName, callback) {
     }
     db.close();
 }
+function getPubSeries(data, callback) {
+    const rackName = data.rackName
+    const publisher_id = data.publisher
+    const db = new Database(`${racksFolder}/${rackName}/rack.db`);
+    const qry = db.prepare(`Select
+    series.id,
+    series.name,
+    publishers.id As publisher_id
+From
+    publishers Inner Join
+    series_publishers_link On series_publishers_link.publisher_id = publishers.id Inner Join
+    series On series.id = series_publishers_link.series_id
+Where
+    publishers.id = ${publisher_id}`);
+    var data = qry.all();
+    if (data === undefined) {
+        callback("No series Found");
+    } else {
+        callback(data);
+    }
+    db.close();
+}
 
 function getTags(rackName, callback) {
     const db = new Database(racksFolder + rackName + "/rack.db");
@@ -113,7 +135,27 @@ function getPublishers(rackName, callback) {
     }
     db.close();
 }
-
+function getSeriesItems(data, callback) {
+    console.log("get series", data)
+    const rackName = data.rackName
+    const series_id = data.series
+    const db = new Database(`${racksFolder}/${rackName}/rack.db`);
+    const qry = db.prepare(`Select
+    items.*,
+    series_link.series_id
+From
+    series_link Inner Join
+    items On series_link.item_id = items.id
+Where
+    series_link.series_id = ${series_id}`);
+    var data = qry.all();
+    if (data === undefined) {
+        callback("No series Found");
+    } else {
+        callback(data);
+    }
+    db.close();
+}
 function getItem(params, callback) {
     const rackName = params.rackName;
     const item = params.item;
@@ -331,7 +373,7 @@ function createItem(params, callback) {
                 linkItemToSeries(itemid, seriesid);
             })
         })
-        imageOps.genPDFCover(path, data.uid)
+        imageOps.genPDFCover(path, rackName, data.uid)
     }else{
         console.log(`[${FgGreen}INFO${cReset}] | ${path} | ${FgRed}exists in db${cReset}`);
     }
@@ -425,3 +467,5 @@ exports.createPublisher = createPublisher;
 exports.createSeries = createSeries;
 exports.createItem = createItem;
 exports.removeItem = removeItem;
+exports.getPubSeries = getPubSeries;
+exports.getSeriesItems = getSeriesItems;

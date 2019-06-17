@@ -1,5 +1,6 @@
 global.racksFolder = "./racks"
-const dbOps = require('./modules/dbOps.js');
+const dbOps = require('./modules/dbOps');
+const fileOps = require('./modules/fileOps');
 const glob = require('glob');
 const express = require("express");
 const path = require("path");
@@ -8,6 +9,9 @@ app.use(express.json())
 app.listen(3000, () => {
     console.log("Server running on port 3000");
 });
+
+fileOps.libraryScan()
+
 app.all('/*', function (req, res, next) {
     res.header("Access-Control-Allow-Origin", "*");
     res.header("Access-Control-Allow-Headers", "X-Requested-With");
@@ -82,6 +86,24 @@ app.get('/getSeries/:rackName', (req, res) => {
 
 });
 
+app.get('/getSeriesItems/:rackName/:series', (req, res) => {
+    dbOps.getSeriesItems(req.params, function (data) {
+        return res.json(
+            data
+        );
+    })
+
+});
+
+app.get('/getPubSeries/:rackName/:publisher', (req, res) => {
+    dbOps.getPubSeries(req.params, function (data) {
+        return res.json(
+            data
+        );
+    })
+
+});
+
 app.get('/getPublishers/:rackName', (req, res) => {
     dbOps.getPublishers(req.params.rackName, function (data) {
         return res.json(
@@ -110,9 +132,8 @@ app.post('/rmItem/', (req, res) => {
     })
 });
 
+app.use('/images', express.static(path.join(__dirname, 'images')))
 
-
-dbOps.createRack("test_123")
 
 glob("**/", {
     cwd: './racks/test_123'
@@ -147,3 +168,5 @@ function filesInFolder(rackName, folder, publisher, series) {
     })
 
 }
+
+

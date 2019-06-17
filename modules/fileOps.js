@@ -1,5 +1,6 @@
 const fs = require('fs-extra');
-const {}
+const path = require("path");
+const glob = require('glob');
 
 //movers
 function moveFile(srcpath, dstpath){
@@ -28,8 +29,6 @@ function removeFile(path){
 
 
 
-//Adders
-libraryScan();
 function libraryScan(rack) {
     glob("**/", {
         cwd: './racks/test_123'
@@ -59,3 +58,6 @@ function filesInFolder(folder) {
     })
 
 }
+
+
+exports.libraryScan = libraryScan;
