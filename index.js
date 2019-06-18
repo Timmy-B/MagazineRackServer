@@ -1,6 +1,7 @@
 global.racksFolder = "./racks"
 const dbOps = require('./modules/dbOps');
 const fileOps = require('./modules/fileOps');
+const imageOps = require('./modules/imageOps');
 const glob = require('glob');
 const express = require("express");
 const path = require("path");
@@ -10,7 +11,7 @@ app.listen(3000, () => {
     console.log("Server running on port 3000");
 });
 
-fileOps.libraryScan()
+// fileOps.libraryScan()
 
 app.all('/*', function (req, res, next) {
     res.header("Access-Control-Allow-Origin", "*");
@@ -20,6 +21,18 @@ app.all('/*', function (req, res, next) {
 app.get('/', (req, res) => {
     return res.send('Received a GET HTTP method');
 });
+
+
+app.get('/api/stats/', (req, res) => {
+    console.log('requesting rack Stats')
+    dbOps.getRackStats(function (data) {
+        return res.json(
+            data
+        );
+    })
+});
+
+
 
 
 app.put('/newRack/:rackName', (req, res) => {
@@ -56,6 +69,15 @@ app.get('/api/libraries/', (req, res) => {
         return res.json(
             data
         );
+    })
+});
+
+app.get('/api/readItem/:rackName/:item', (req, res) => {
+    const rackName = req.params.rackName
+    dbOps.getItem(req.params, function (bookInfo) {
+        imageOps.renderPDF(rackName, bookInfo, function (data) {
+            console.log(data)
+        })
     })
 });
 
@@ -133,6 +155,7 @@ app.post('/rmItem/', (req, res) => {
 });
 
 app.use('/images', express.static(path.join(__dirname, 'images')))
+app.use('/reader', express.static(path.join(__dirname, 'temp')))
 
 
 glob("**/", {

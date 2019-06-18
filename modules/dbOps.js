@@ -66,6 +66,36 @@ function getRacks(callback) {
 
 }
 
+function getRackStats(callback){
+    const start = Date.now();
+    var stats = []
+    getRacks(function(data){
+    for (var i = 0; i < data.length; i++) {
+        stats.push({
+            rack_name: data[i].name,
+            count: getRackCount(data[i].name)
+        })
+    }
+    })
+    callback(stats)
+    const secs =(Date.now() - start) / 1000
+    console.log(stats)
+    console.log(`took ${secs} secs`)
+}
+
+function getRackCount(rackName){
+    var fullPath = racksFolder + rackName;
+    if (fs.existsSync(fullPath)) {
+        const db = new Database(`${fullPath}/rack.db`);
+    const qry = db.prepare(`SELECT count(*) as count FROM items;`);
+    const info = qry.get();
+    return info.count;
+    }else{
+        return 0;
+    }
+}
+
+
 function getItems(rackName, callback) {
     const db = new Database(racksFolder + rackName + "/rack.db");
     const qry = db.prepare(`SELECT * FROM items;`);
@@ -89,6 +119,7 @@ function getSeries(rackName, callback) {
     }
     db.close();
 }
+
 function getPubSeries(data, callback) {
     const rackName = data.rackName
     const publisher_id = data.publisher
@@ -170,7 +201,8 @@ function getItem(params, callback) {
     items.publish_date,
     items.path,
     items.added,
-    items.modified
+    items.modified,
+    items.uid
 From
     items Inner Join
     publishers_link On publishers_link.item_id = items.id Inner Join
@@ -469,3 +501,5 @@ exports.createItem = createItem;
 exports.removeItem = removeItem;
 exports.getPubSeries = getPubSeries;
 exports.getSeriesItems = getSeriesItems;
+exports.getRackCount = getRackCount;
+exports.getRackStats = getRackStats;
