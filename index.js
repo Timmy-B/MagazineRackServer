@@ -76,7 +76,8 @@ app.get('/api/readItem/:rackName/:item', (req, res) => {
     const rackName = req.params.rackName
     dbOps.getItem(req.params, function (bookInfo) {
         imageOps.renderPDF(rackName, bookInfo, function (data) {
-            console.log(data)
+            console.log(data.data)
+            return res.json(data)
         })
     })
 });

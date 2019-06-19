@@ -90,10 +90,13 @@ function renderPDF(rackName, data, callback) {
     const publish_date = data.publish_date
   const dir = `./racks/${rackName}`;
   const rackDir = `./temp/${rackName}/`;
+  const url = `http://localhost:3000/reader/${rackName}/${uid}/`;
   const itemDir = `${rackDir}${uid}/`;
   const pdfPath = `${dir}${path}`;
+  var pageSizes = []
   var pageData = {
       bookTitle: name,
+      url: url,
       data:[],
       // thumbnail is optional, but it is used in the info dialog
       thumbnail: '//archive.org/download/BookReader/img/page014.jpg',
@@ -134,7 +137,7 @@ function renderPDF(rackName, data, callback) {
             viewport.height
           );
           console.log(viewport.width, viewport.height);
-            pageData.push({ page: pageNum, width: Math.round(viewport.width), height: Math.round(viewport.height), path: `${ pageNum }.png`})
+          pageSizes.push({ page: pageNum, width: Math.round(viewport.width), height: Math.round(viewport.height)})
           var renderContext = {
             canvasContext: canvasAndContext.context,
             viewport: viewport,
@@ -164,11 +167,60 @@ function renderPDF(rackName, data, callback) {
     .then(
       () => {
         console.log("# End of Document");
-            callback(pageData)
+        pageData.data = pagePlacer(pageSizes, pageData.url )
+        callback(pageData)
       },
       err => console.error(`Error: ${err}`)
     );
 }
+
+function pagePlacer(data, url){
+    var pageSizes = []
+    // var dualPage
+    console.log(data)
+  var nextPageSide = 'L'
+  for (var i = 0; i < data.length; i++) {
+      const height = data[i].height
+      const width = data[i].width
+      const ratio = height / width
+    const uri = `${url}${i+1}.png`
+      if(i === 0){
+        pageSizes.push([{
+          width: width,
+          height: height,
+          type: 'cover',
+          uri: uri
+        }])
+      }else if(ratio < 1){ 
+        pageSizes.push([{
+          width: width,
+          height: height,
+          type: 'spread',
+          uri: uri
+        }])
+        nextPageSide = 'L'
+      } else if (nextPageSide == 'L'){
+        pageSizes.push([{
+          width: width,
+          height: height,
+          type: 'left',
+          uri: uri
+        }])
+        nextPageSide = 'R'
+      }else{
+        pageSizes[pageSizes.length - 1].push({
+          width: width,
+          height: height,
+          type: 'right',
+          uri: uri
+        })
+        nextPageSide = 'L'
+      }
+  }
+  return pageSizes
+}
+
+
 
 exports.genPDFCover = genPDFCover;
 exports.renderPDF = renderPDF;
