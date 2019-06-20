@@ -81,13 +81,13 @@ function genPDFCover(path, rackName, uid) {
 }
 
 function renderPDF(rackName, data, callback) {
-    const path = data.path
-    const uid = data.uid
-    const name = data.name
-    const series = data.series
-    const publisher = data.publisher
-    const description = data.description
-    const publish_date = data.publish_date
+  const path = data.path
+  const uid = data.uid
+  const name = data.name
+  const series = data.series
+  const publisher = data.publisher
+  const description = data.description
+  const publish_date = data.publish_date
   const dir = `./racks/${rackName}`;
   const rackDir = `./temp/${rackName}/`;
   const url = `http://localhost:3000/reader/${rackName}/${uid}/`;
@@ -98,6 +98,7 @@ function renderPDF(rackName, data, callback) {
       bookTitle: name,
       url: url,
       data:[],
+
       // thumbnail is optional, but it is used in the info dialog
       thumbnail: '//archive.org/download/BookReader/img/page014.jpg',
 
