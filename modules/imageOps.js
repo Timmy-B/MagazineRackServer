@@ -2,6 +2,7 @@ const fs = require("fs");
 const pdfjsLib = require("pdfjs-dist");
 const Canvas = require("canvas");
 const assert = require("assert");
+const dbOps = require('./dbOps')
 function NodeCanvasFactory() {}
 NodeCanvasFactory.prototype = {
   create: function NodeCanvasFactory_create(width, height) {
@@ -51,6 +52,13 @@ function genPDFCover(path, rackName, uid) {
       pdfDocument.getPage(1).then(function(page) {
         // Render the page on a Node canvas with 100% scale.
         var viewport = page.getViewport({ scale: 1.0 });
+        var size = viewport.width * viewport.height;
+        var scale = 1.0
+        if(size > 16000000){
+          scale = 1 - (16000000 / size)
+          console.log(scale)
+          viewport = page.getViewport({ scale: scale });
+        }
         var canvasFactory = new NodeCanvasFactory();
         var canvasAndContext = canvasFactory.create(
           viewport.width,
@@ -132,6 +140,13 @@ function renderPDF(rackName, data, callback) {
         return doc.getPage(pageNum).then(page => {
           console.log(`# Page ${pageNum}`);
           var viewport = page.getViewport({ scale: 1.0 });
+          var size = viewport.width * viewport.height;
+          var scale = 1.0
+          if (size > 16000000){
+            scale = 16000000 / size
+            console.log(scale.toFixed(2))
+            viewport = page.getViewport({ scale: scale.toFixed(2) });
+          }
           var canvasFactory = new NodeCanvasFactory();
           var canvasAndContext = canvasFactory.create(
             viewport.width,
@@ -169,6 +184,7 @@ function renderPDF(rackName, data, callback) {
       () => {
         console.log("# End of Document");
         pageData.data = pagePlacer(pageSizes, pageData.url )
+        dbOps.storeCachedData(uid, pageData)
         callback(pageData)
       },
       err => console.error(`Error: ${err}`)
@@ -178,7 +194,6 @@ function renderPDF(rackName, data, callback) {
 function pagePlacer(data, url){
     var pageSizes = []
     // var dualPage
-    console.log(data)
   var nextPageSide = 'L'
   for (var i = 0; i < data.length; i++) {
       const height = data[i].height

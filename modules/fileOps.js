@@ -31,7 +31,7 @@ function removeFile(path){
 
 function libraryScan(rack) {
     glob("**/", {
-        cwd: './racks/test_123'
+        cwd: './racks/Magz'
     }, function (er, folders) {
         folders.forEach(function (folder) {
             var folderName = folder.substring(0, folder.lastIndexOf('/'));
@@ -50,7 +50,7 @@ function filesInFolder(folder) {
     var parent = path.basename(folder);
 
     glob("*.*", {
-        cwd: './racks/test_123/' + folder
+        cwd: './racks/Magz/' + folder
     }, function (er, files) {
         files.forEach(function (file) {
             console.log(file)

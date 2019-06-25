@@ -1,6 +1,6 @@
 const crypto = require("crypto");
 const Database = require('better-sqlite3');
-const rackName = "test_123"
+const rackName = "Magz"
 const imageOps = require('./imageOps')
 const fs = require('fs');
 const cReset = "\x1b[0m",
@@ -47,6 +47,12 @@ if (row === undefined) {
             path TEXT,
             created TEXT
         );
+        CREATE TABLE cache (
+            id INTEGER PRIMARY KEY,
+            item_uid TEXT,
+            data BLOB,
+            date_added TEXT
+        );
         `;
     db.exec(sqlInit);
 }
@@ -56,41 +62,65 @@ console.log("Library exists now, if it didn't already.");
 
 
 function getRacks(callback) {
+    const db = new Database(racksFolder + "libraries.db");
     const qry = db.prepare(`SELECT * FROM libraries;`);
     var data = qry.all();
     if (data === undefined) {
         callback("No Racks Found");
     } else {
+        console.log(data)
         callback(data);
     }
 
 }
 
-function getRackStats(callback){
+function storeCachedData(uid, data) {
+    const db = new Database(racksFolder + "libraries.db");
+    const qry = db.prepare(`INSERT INTO cache VALUES (NULL, @item_uid, @data, date('now'))`);
+    qry.run({
+        item_uid: uid,
+        data: JSON.stringify(data)
+    });
+}
+
+function getCachedData(uid, callback) {
+    const qry = db.prepare(`SELECT * FROM cache WHERE item_uid = ? ;`);
+    var data = qry.get(uid);
+    if (data === undefined) {
+        callback(false);
+    } else {
+        var json = JSON.parse(data.data);
+        console.log(json)
+        callback(json);
+    }
+
+}
+
+function getRackStats(callback) {
     const start = Date.now();
     var stats = []
-    getRacks(function(data){
-    for (var i = 0; i < data.length; i++) {
-        stats.push({
-            rack_name: data[i].name,
-            count: getRackCount(data[i].name)
-        })
-    }
+    getRacks(function (data) {
+        for (var i = 0; i < data.length; i++) {
+            stats.push({
+                rack_name: data[i].name,
+                count: getRackCount(data[i].name)
+            })
+        }
     })
     callback(stats)
-    const secs =(Date.now() - start) / 1000
+    const secs = (Date.now() - start) / 1000
     console.log(stats)
     console.log(`took ${secs} secs`)
 }
 
-function getRackCount(rackName){
+function getRackCount(rackName) {
     var fullPath = racksFolder + rackName;
     if (fs.existsSync(fullPath)) {
         const db = new Database(`${fullPath}/rack.db`);
-    const qry = db.prepare(`SELECT count(*) as count FROM items;`);
-    const info = qry.get();
-    return info.count;
-    }else{
+        const qry = db.prepare(`SELECT count(*) as count FROM items;`);
+        const info = qry.get();
+        return info.count;
+    } else {
         return 0;
     }
 }
@@ -237,7 +267,7 @@ function createRack(rackName, callback) {
         });
         // we dont want to create a library folder if it already exists
         // perhaps check to see if there is a db here and import it into libraries;
-    } 
+    }
     createRackDb(fullPath);
     callback && callback("Added Rack Database!");
 }
@@ -245,8 +275,8 @@ function createRack(rackName, callback) {
 
 function createRackDb(path) {
     console.log(path + "/rack.db")
-    const dbPath = + path+"/rack.db"
-    if (!fs.existsSync(path+"/rack.db")) {
+    const dbPath = + path + "/rack.db"
+    if (!fs.existsSync(path + "/rack.db")) {
         const rackDb = new Database(path + "/rack.db");
 
         const sqlInit = `
@@ -305,14 +335,14 @@ function createRackDb(path) {
         END
         `;
         rackDb.exec(sqlInit);
-    }else{
+    } else {
         console.log("found library file")
     }
-    
+
 }
 
 function createPublisher(publisher, callback) {
-    const db = new Database("./racks/test_123/rack.db");
+    const db = new Database("./racks/Magz/rack.db");
     // check to see if database initialized
     const row = db.prepare(`SELECT *
     FROM publishers
@@ -331,7 +361,7 @@ function createPublisher(publisher, callback) {
 }
 
 function createSeries(series, publisher, callback) {
-    const db = new Database("./racks/test_123/rack.db");
+    const db = new Database("./racks/Mag/rack.db");
     // check to see if database initialized
     const row = db.prepare(`Select
     publishers.id As publisher_id,
@@ -363,7 +393,7 @@ Where
                 console.log("found pub link to series")
                 linkSeriesToPublisher(info.lastInsertRowid, pubQry.id)
             }
-        }else{
+        } else {
             console.log("no pub defined")
         }
         // else{
@@ -376,7 +406,7 @@ Where
         //     }
         // }
         callback && callback(info.lastInsertRowid)
-    } else{
+    } else {
         console.log("found link for pub and series")
     }
     callback && callback(row.series_id)
@@ -394,19 +424,18 @@ function createItem(params, callback) {
     });
     if (row === undefined) {
         data.uid = crypto.randomBytes(16).toString("hex");
-        const db = new Database("./racks/test_123/rack.db");
         const qry = db.prepare(`INSERT INTO items VALUES (NULL, @name, @description, @publish_date, @path, date('now'), date('now'), @uid, null)`);
         const info = qry.run(data);
         const itemid = info.lastInsertRowid;
         createPublisher(data.publisher, function (pubid) {
             linkItemToPublisher(itemid, pubid);
 
-            createSeries(data.series, data.publisher, function(seriesid){
+            createSeries(data.series, data.publisher, function (seriesid) {
                 linkItemToSeries(itemid, seriesid);
             })
         })
         imageOps.genPDFCover(path, rackName, data.uid)
-    }else{
+    } else {
         console.log(`[${FgGreen}INFO${cReset}] | ${path} | ${FgRed}exists in db${cReset}`);
     }
     db.close();
@@ -503,3 +532,5 @@ exports.getPubSeries = getPubSeries;
 exports.getSeriesItems = getSeriesItems;
 exports.getRackCount = getRackCount;
 exports.getRackStats = getRackStats;
+exports.storeCachedData = storeCachedData;
+exports.getCachedData = getCachedData;

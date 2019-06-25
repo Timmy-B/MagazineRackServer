@@ -75,10 +75,19 @@ app.get('/api/libraries/', (req, res) => {
 app.get('/api/readItem/:rackName/:item', (req, res) => {
     const rackName = req.params.rackName
     dbOps.getItem(req.params, function (bookInfo) {
-        imageOps.renderPDF(rackName, bookInfo, function (data) {
-            console.log(data.data)
-            return res.json(data)
+        dbOps.getCachedData(bookInfo.uid, function(data){
+            if(!data){
+                imageOps.renderPDF(rackName, bookInfo, function (data) {
+                    console.log(data.data)
+                    return res.json(data)
+                })
+            }else{
+                console.log(data.data)
+                return res.json(data)
+            }
+
         })
+
     })
 });
 
@@ -160,7 +169,7 @@ app.use('/reader', express.static(path.join(__dirname, 'temp')))
 
 
 glob("**/", {
-    cwd: './racks/test_123'
+    cwd: './racks/Magz/'
 }, function (er, folders) {
     folders.forEach(function (folder) {
         var folderName = folder.substring(0, folder.lastIndexOf('/'));
@@ -169,7 +178,7 @@ glob("**/", {
             var series = path.basename(folder);
             dbOps.createSeries(series,publisher)
             // filesInFolder(folderName)
-            filesInFolder('test_123',folder, publisher, series)
+            filesInFolder('Magz',folder, publisher, series)
 
         } else {
             console.log("publisher:", path.basename(folder))
