@@ -1,8 +1,9 @@
 const crypto = require("crypto");
 const Database = require('better-sqlite3');
-const rackName = "Magz"
 const imageOps = require('./imageOps')
 const fs = require('fs');
+const racksFolder = "./racks";
+const settingsDB = "./settings/settings.db";
 const cReset = "\x1b[0m",
     cBright = "\x1b[1m",
     cDim = "\x1b[2m",
@@ -27,20 +28,17 @@ const cReset = "\x1b[0m",
     BgCyan = "\x1b[46m",
     BgWhite = "\x1b[47m";
 
-
-// connect to libraries database ( create if doesnt exist
-const racksFolder = "./racks/"
-const db = new Database(racksFolder + "libraries.db");
-// check to see if database initialized
-const qry = db.prepare(`SELECT name
+function initSettingsDB(callback) {
+    const db = new Database(settingsDB);
+    const qry = db.prepare(`SELECT name
     FROM sqlite_master
     WHERE
         type='table' and name='libraries'
     ;`);
-var row = qry.get();
-if (row === undefined) {
-    console.log("WARNING: database appears empty; initializing it.");
-    const sqlInit = `
+    var row = qry.get();
+    if (row === undefined) {
+        console.log("WARNING: Settings database appears empty; initializing it.");
+        const sqlInit = `
         CREATE TABLE libraries (
             id INTEGER PRIMARY KEY,
             name TEXT,
@@ -53,16 +51,41 @@ if (row === undefined) {
             data BLOB,
             date_added TEXT
         );
+        CREATE TABLE settings (
+            id INTEGER PRIMARY KEY,
+            serverPort INTEGER,
+            darkTheme BOOLEAN
+        );
+        INSERT INTO settings VALUES (
+            NULL,  
+            3000, 
+            true
+        );
         `;
-    db.exec(sqlInit);
+        db.exec(sqlInit);
+        callback("Settings DB initialized.");
+    }else{
+        callback('Settings DB exists')
+    }
+    db.close();
 }
-console.log("Library exists now, if it didn't already.");
 
-//Getters
+function getServerPort(){
+    const db = new Database(settingsDB);
+    const qry = db.prepare(`SELECT serverPort FROM settings;`);
+    var data = qry.get();
+    if (data === undefined) {
+        initSettingsDB();
+        return 3000
+    } else {
+        return data.serverPort
+    }
+    db.close();
+}
 
 
 function getRacks(callback) {
-    const db = new Database(racksFolder + "libraries.db");
+    const db = new Database(settingsDB);
     const qry = db.prepare(`SELECT * FROM libraries;`);
     var data = qry.all();
     if (data === undefined) {
@@ -71,19 +94,30 @@ function getRacks(callback) {
         console.log(data)
         callback(data);
     }
-
+    db.close();
 }
 
 function storeCachedData(uid, data) {
-    const db = new Database(racksFolder + "libraries.db");
+    const db = new Database(settingsDB);
     const qry = db.prepare(`INSERT INTO cache VALUES (NULL, @item_uid, @data, date('now'))`);
     qry.run({
         item_uid: uid,
         data: JSON.stringify(data)
     });
+    db.close();
 }
+function editRack(data) {
 
+    const db = new Database(settingsDB);
+    const qry = db.prepare(`UPDATE libraries SET name = @name WHERE id = @id`);
+    qry.run({
+        id: data.itemID,
+        name: data.rackName
+    });
+    db.close();
+}
 function getCachedData(uid, callback) {
+    const db = new Database(settingsDB);
     const qry = db.prepare(`SELECT * FROM cache WHERE item_uid = ? ;`);
     var data = qry.get(uid);
     if (data === undefined) {
@@ -93,7 +127,7 @@ function getCachedData(uid, callback) {
         console.log(json)
         callback(json);
     }
-
+    db.close();
 }
 
 function getRackStats(callback) {
@@ -151,9 +185,10 @@ function getSeries(rackName, callback) {
 }
 
 function getPubSeries(data, callback) {
-    const rackName = data.rackName
-    const publisher_id = data.publisher
-    const db = new Database(`${racksFolder}/${rackName}/rack.db`);
+    console.log(data)
+    var rack = rackPath(data.rackID)
+    const publisher_id = data.publisherID
+    const db = new Database(`${racksFolder}/${rack}/rack.db`);
     const qry = db.prepare(`Select
     series.id,
     series.name,
@@ -185,8 +220,9 @@ function getTags(rackName, callback) {
     db.close();
 }
 
-function getPublishers(rackName, callback) {
-    const db = new Database(racksFolder + rackName + "/rack.db");
+function getPublishers(rackID, callback) {
+    const path = rackPath(rackID)
+    const db = new Database(`${racksFolder}/${path}/rack.db`);
     const qry = db.prepare(`SELECT * FROM publishers;`);
     var data = qry.all();
     if (data === undefined) {
@@ -196,11 +232,21 @@ function getPublishers(rackName, callback) {
     }
     db.close();
 }
+
+function rackPath(rackID) {
+    const db = new Database(settingsDB);
+    const qry = db.prepare(`SELECT * FROM libraries WHERE id =?;`);
+    var row = qry.get(rackID)
+        return row.path
+        
+}
+
+
 function getSeriesItems(data, callback) {
     console.log("get series", data)
-    const rackName = data.rackName
-    const series_id = data.series
-    const db = new Database(`${racksFolder}/${rackName}/rack.db`);
+    const rpath = rackPath(data.rackID)
+    const series_id = data.seriesID
+    const db = new Database(`${racksFolder}/${rpath}/rack.db`);
     const qry = db.prepare(`Select
     items.*,
     series_link.series_id
@@ -213,15 +259,16 @@ Where
     if (data === undefined) {
         callback("No series Found");
     } else {
+        console.log("items", data)
         callback(data);
     }
     db.close();
 }
 function getItem(params, callback) {
-    const rackName = params.rackName;
-    const item = params.item;
-    console.log(rackName)
-    const db = new Database(racksFolder + rackName + "/rack.db");
+    console.log("huh",params)
+    const path = rackPath(params.rackID)
+    const item = params.itemID;
+    const db = new Database(`${racksFolder}/${path}/rack.db`);
     const data = db.prepare(`Select
     items.id,
     items.name,
@@ -244,6 +291,7 @@ Where
     if (data === undefined) {
         callback("No Items Found");
     } else {
+        data.rackPath = path
         callback(data);
     }
     db.close();
@@ -254,28 +302,33 @@ Where
 
 // Create Rack
 function createRack(rackName, callback) {
+
+    const db = new Database(settingsDB);
     const qry = db.prepare(`INSERT INTO libraries VALUES (NULL, @name, @path, date('now'))`);
-    var rackpath = rackName.replace(/ /g, "_");
-    var fullPath = racksFolder + rackpath;
+    var fullPath = racksFolder + '/' + rackName;
+    var rackDbPath = fullPath +"/rack.db";
     //check to see if library path exists - should also add a check for db obviously.
     if (!fs.existsSync(fullPath)) {
         console.log("[INFO] Creating Rack folder and database");
         fs.mkdirSync(fullPath);
-        qry.run({
-            name: rackName,
-            path: rackpath
-        });
-        // we dont want to create a library folder if it already exists
-        // perhaps check to see if there is a db here and import it into libraries;
-    }
-    createRackDb(fullPath);
-    callback && callback("Added Rack Database!");
+    } 
+    fs.access(rackDbPath, fs.F_OK, (err) => {
+        if (err) {
+        createRackDb(fullPath);
+            callback && callback(`Added ${rackName} to Database!`);
+        }
+            callback && callback(`Imported ${rackName} to Database!`);
+    })
+    qry.run({
+        name: rackName,
+        path: rackName
+    });
+    db.close();
 }
 
 
 function createRackDb(path) {
     console.log(path + "/rack.db")
-    const dbPath = + path + "/rack.db"
     if (!fs.existsSync(path + "/rack.db")) {
         const rackDb = new Database(path + "/rack.db");
 
@@ -341,8 +394,8 @@ function createRackDb(path) {
 
 }
 
-function createPublisher(publisher, callback) {
-    const db = new Database("./racks/Magz/rack.db");
+function createPublisher(publisher, rack, callback) {
+    const db = new Database(`${racksFolder}/${rack}/rack.db`);
     // check to see if database initialized
     const row = db.prepare(`SELECT *
     FROM publishers
@@ -360,8 +413,8 @@ function createPublisher(publisher, callback) {
     db.close();
 }
 
-function createSeries(series, publisher, callback) {
-    const db = new Database("./racks/Mag/rack.db");
+function createSeries(series, publisher, rack, callback) {
+    const db = new Database(`./${racksFolder}/${rack}/rack.db`);
     // check to see if database initialized
     const row = db.prepare(`Select
     publishers.id As publisher_id,
@@ -391,7 +444,7 @@ Where
             console.log(pubQry)
             if (pubQry != undefined) {
                 console.log("found pub link to series")
-                linkSeriesToPublisher(info.lastInsertRowid, pubQry.id)
+                linkSeriesToPublisher(info.lastInsertRowid, pubQry.id, rack)
             }
         } else {
             console.log("no pub defined")
@@ -415,8 +468,8 @@ Where
 
 
 function createItem(params, callback) {
-    const rackName = params.rackName;
-    const db = new Database(`./racks/${rackName}/rack.db`);
+    const rackPath = params.rackPath;
+    const db = new Database(`${racksFolder}/${rackPath}/rack.db`);
     const data = params.itemInfo;
     const path = data.path
     const row = db.prepare(`SELECT * FROM items WHERE path = @path;`).get({
@@ -427,14 +480,14 @@ function createItem(params, callback) {
         const qry = db.prepare(`INSERT INTO items VALUES (NULL, @name, @description, @publish_date, @path, date('now'), date('now'), @uid, null)`);
         const info = qry.run(data);
         const itemid = info.lastInsertRowid;
-        createPublisher(data.publisher, function (pubid) {
-            linkItemToPublisher(itemid, pubid);
+        createPublisher(data.publisher, rackPath, function (pubid) {
+            linkItemToPublisher(itemid, pubid, rackPath);
 
-            createSeries(data.series, data.publisher, function (seriesid) {
-                linkItemToSeries(itemid, seriesid);
+            createSeries(data.series, data.publisher, rackPath, function (seriesid) {
+                linkItemToSeries(itemid, seriesid, rackPath);
             })
         })
-        imageOps.genPDFCover(path, rackName, data.uid)
+        imageOps.genPDFCover(path, rackPath, data.uid)
     } else {
         console.log(`[${FgGreen}INFO${cReset}] | ${path} | ${FgRed}exists in db${cReset}`);
     }
@@ -443,8 +496,8 @@ function createItem(params, callback) {
 
 
 
-function linkItemToPublisher(item, publisher) {
-    const db = new Database(racksFolder + rackName + "/rack.db");
+function linkItemToPublisher(item, publisher, rackPath) {
+    const db = new Database(`${racksFolder}/${rackPath}/rack.db`);
     const row = db.prepare(`SELECT * FROM publishers_link WHERE publisher_id = @publisher AND item_id = @item;`).get({
         'item': item,
         'publisher': publisher
@@ -459,9 +512,9 @@ function linkItemToPublisher(item, publisher) {
     db.close();
 }
 
-function linkSeriesToPublisher(series, publisher) {
+function linkSeriesToPublisher(series, publisher, rackPath) {
 
-    const db = new Database(racksFolder + rackName + "/rack.db");
+    const db = new Database(`${racksFolder}/${rackPath}/rack.db`);
     const row = db.prepare(`SELECT * FROM series_publishers_link WHERE publisher_id = @publisher AND series_id = @series;`).get({
         'series': series,
         'publisher': publisher
@@ -477,8 +530,8 @@ function linkSeriesToPublisher(series, publisher) {
     db.close();
 }
 
-function linkItemToSeries(item, series) {
-    const db = new Database(racksFolder + rackName + "/rack.db");
+function linkItemToSeries(item, series, rackPath) {
+    const db = new Database(`${racksFolder}/${rackPath}/rack.db`);
     const row = db.prepare(`SELECT * FROM series_link WHERE item_id = @item_id AND series_id = @series_id;`).get({
         'item_id': item,
         'series_id': series
@@ -516,6 +569,12 @@ function removeItem(params) {
 
 
 
+function removeRack(rackID) {
+    const db = new Database(settingsDB);
+    db.prepare(`DELETE FROM libraries WHERE id = ${rackID};`).run();
+    db.close();
+}
+
 
 exports.createRack = createRack;
 exports.getRacks = getRacks;
@@ -528,9 +587,14 @@ exports.createPublisher = createPublisher;
 exports.createSeries = createSeries;
 exports.createItem = createItem;
 exports.removeItem = removeItem;
+exports.removeRack = removeRack;
 exports.getPubSeries = getPubSeries;
 exports.getSeriesItems = getSeriesItems;
 exports.getRackCount = getRackCount;
 exports.getRackStats = getRackStats;
 exports.storeCachedData = storeCachedData;
 exports.getCachedData = getCachedData;
+exports.initSettingsDB = initSettingsDB;
+exports.getServerPort = getServerPort;
+exports.editRack = editRack;
+exports.rackPath = rackPath;

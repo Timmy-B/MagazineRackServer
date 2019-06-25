@@ -33,9 +33,9 @@ NodeCanvasFactory.prototype = {
   }
 };
 
-function genPDFCover(path, rackName, uid) {
-  const dir = `./racks/${rackName}`;
-  const imageDir = `./images/${rackName}/`;
+function genPDFCover(path, rackPath, uid) {
+  const dir = `./racks/${rackPath}`;
+  const imageDir = `./images/${rackPath}/`;
   const pdfPath = `${dir}${path}`;
   var rawData = new Uint8Array(fs.readFileSync(pdfPath));
   if (!fs.existsSync(imageDir)) {
@@ -55,7 +55,7 @@ function genPDFCover(path, rackName, uid) {
         var size = viewport.width * viewport.height;
         var scale = 1.0
         if(size > 16000000){
-          scale = 1 - (16000000 / size)
+          scale = 16000000 / size
           console.log(scale)
           viewport = page.getViewport({ scale: scale });
         }
@@ -88,7 +88,7 @@ function genPDFCover(path, rackName, uid) {
     });
 }
 
-function renderPDF(rackName, data, callback) {
+function renderPDF(data, callback) {
   const path = data.path
   const uid = data.uid
   const name = data.name
@@ -96,9 +96,10 @@ function renderPDF(rackName, data, callback) {
   const publisher = data.publisher
   const description = data.description
   const publish_date = data.publish_date
-  const dir = `./racks/${rackName}`;
-  const rackDir = `./temp/${rackName}/`;
-  const url = `http://localhost:3000/reader/${rackName}/${uid}/`;
+  const rackPath = data.rackPath
+  const dir = `./racks/${rackPath}`;
+  const rackDir = `./temp/${rackPath}/`;
+  const url = `http://localhost:3000/reader/${rackPath}/${uid}/`;
   const itemDir = `${rackDir}${uid}/`;
   const pdfPath = `${dir}${path}`;
   var pageSizes = []

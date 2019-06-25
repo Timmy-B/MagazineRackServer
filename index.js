@@ -6,22 +6,52 @@ const glob = require('glob');
 const express = require("express");
 const path = require("path");
 const app = express();
+var server;
 app.use(express.json())
-app.listen(3000, () => {
-    console.log("Server running on port 3000");
+
+dbOps.initSettingsDB(function (response) {
+    console.log(response)
 });
+
+startServer()
+function startServer() {
+    var port = dbOps.getServerPort()
+    server = app.listen(port, function () {
+        console.log('Listening on port:', port);
+    });
+}
+
+
+
+function setServerPort(port) {
+    server.close(function () {
+        console.log('Server closed')
+        server = app.listen(port, function () {
+            console.log('Server port changed to:', port);
+
+        });
+    });
+
+}
 
 // fileOps.libraryScan()
 
 app.all('/*', function (req, res, next) {
-    res.header("Access-Control-Allow-Origin", "*");
-    res.header("Access-Control-Allow-Headers", "X-Requested-With");
+    res.setHeader("Access-Control-Allow-Origin", "*");
+    res.setHeader("Access-Control-Allow-Credentials", "true");
+    res.setHeader("Access-Control-Allow-Methods", "GET,HEAD,OPTIONS,POST,PUT");
+    res.setHeader("Access-Control-Allow-Headers", "Access-Control-Allow-Headers, Origin,Accept, X-Requested-With, Content-Type, Access-Control-Request-Method, Access-Control-Request-Headers");
     next();
 });
-app.get('/', (req, res) => {
-    return res.send('Received a GET HTTP method');
+
+app.get('/api', (req, res) => {
+    return res.send('Server is running');
 });
 
+app.get('/api/switch', (req, res) => {
+
+    setServerPort(4000)
+});
 
 app.get('/api/stats/', (req, res) => {
     console.log('requesting rack Stats')
@@ -33,27 +63,27 @@ app.get('/api/stats/', (req, res) => {
 });
 
 
-
-
-app.put('/newRack/:rackName', (req, res) => {
-    dbOps.createRack(req.params.rackName, function(response){
+app.post('/api/newRack/', (req, res) => {
+    var newRack = req.body.rackName
+    dbOps.createRack(newRack, function (response) {
+        console.log(response)
+    });
         return res.send(
-            response,
+            "added",
         );
-    })
-    
-});
-app.put('/newRack/:rackName', (req, res) => {
-    dbOps.createRack(req.params.rackName, function(response){
-        return res.send(
-            response,
-        );
-    })
-    
+
 });
 
+app.post('/api/editRack/', (req, res) => {
+    var data = req.body
+    dbOps.editRack(data);
+    return res.send(
+        "edited",
+    );
+
+});
 ///temp function for testing 
-app.post('/newItem/', (req, res) => {
+app.post('/api/newItem/', (req, res) => {
     res.json(req.body);
     dbOps.createItem(req.body, function (response) {
 
@@ -65,23 +95,28 @@ app.post('/newItem/', (req, res) => {
 
 app.get('/api/libraries/', (req, res) => {
     console.log('requesting racks')
-    dbOps.getRacks(function(data){
+    dbOps.getRacks(function (data) {
         return res.json(
             data
         );
     })
 });
 
-app.get('/api/readItem/:rackName/:item', (req, res) => {
-    const rackName = req.params.rackName
+app.post('/api/scanRack/', (req, res) => {
+    const rackID = req.body.itemID
+    fileOps.libraryScan(rackID)
+    return res.send("Started Scan");
+});
+
+app.get('/api/readItem/:rackID/:itemID', (req, res) => {
     dbOps.getItem(req.params, function (bookInfo) {
-        dbOps.getCachedData(bookInfo.uid, function(data){
-            if(!data){
-                imageOps.renderPDF(rackName, bookInfo, function (data) {
+        dbOps.getCachedData(bookInfo.uid, function (data) {
+            if (!data) {
+                imageOps.renderPDF(bookInfo, function (data) {
                     console.log(data.data)
                     return res.json(data)
                 })
-            }else{
+            } else {
                 console.log(data.data)
                 return res.json(data)
             }
@@ -118,7 +153,7 @@ app.get('/getSeries/:rackName', (req, res) => {
 
 });
 
-app.get('/getSeriesItems/:rackName/:series', (req, res) => {
+app.get('/api/getSeriesItems/:rackID/:seriesID', (req, res) => {
     dbOps.getSeriesItems(req.params, function (data) {
         return res.json(
             data
@@ -127,7 +162,7 @@ app.get('/getSeriesItems/:rackName/:series', (req, res) => {
 
 });
 
-app.get('/getPubSeries/:rackName/:publisher', (req, res) => {
+app.get('/api/getPubSeries/:rackID/:publisherID', (req, res) => {
     dbOps.getPubSeries(req.params, function (data) {
         return res.json(
             data
@@ -136,8 +171,8 @@ app.get('/getPubSeries/:rackName/:publisher', (req, res) => {
 
 });
 
-app.get('/getPublishers/:rackName', (req, res) => {
-    dbOps.getPublishers(req.params.rackName, function (data) {
+app.get('/api/getPublishers/:rackID', (req, res) => {
+    dbOps.getPublishers(req.params.rackID, function (data) {
         return res.json(
             data
         );
@@ -145,8 +180,8 @@ app.get('/getPublishers/:rackName', (req, res) => {
 
 });
 
-app.get('/getItem/:rackName/:item', (req, res) => {
-    
+app.get('/api/getItem/:rackID/:itemID', (req, res) => {
+
     dbOps.getItem(req.params, function (data) {
         return res.json(
             data
@@ -155,51 +190,18 @@ app.get('/getItem/:rackName/:item', (req, res) => {
 
 });
 
-app.post('/rmItem/', (req, res) => {
-    res.json(req.body);
-    dbOps.removeItem(req.body, function (response) {
-        return res.send(
-            response,
-        );
+app.post('/api/rmRack/', (req, res) => {
+    var rackID = req.body.itemID
+    dbOps.removeRack(rackID, function (response) {
+            console.log(response)
     })
+    return res.send("removed"+rackID);
 });
 
 app.use('/images', express.static(path.join(__dirname, 'images')))
 app.use('/reader', express.static(path.join(__dirname, 'temp')))
 
 
-glob("**/", {
-    cwd: './racks/Magz/'
-}, function (er, folders) {
-    folders.forEach(function (folder) {
-        var folderName = folder.substring(0, folder.lastIndexOf('/'));
-        if (folderName.includes('/')) {
-            var publisher = folder.split('/')[0]
-            var series = path.basename(folder);
-            dbOps.createSeries(series,publisher)
-            // filesInFolder(folderName)
-            filesInFolder('Magz',folder, publisher, series)
 
-        } else {
-            console.log("publisher:", path.basename(folder))
-            dbOps.createPublisher(path.basename(folder));
-        }
-    })
-})
-
-
-function filesInFolder(rackName, folder, publisher, series) {
-
-    glob("*.*", {
-        cwd: `./racks/${rackName}/${folder}`
-    }, function (er, files) {
-        files.forEach(function (file) {
-            const path = `/${folder}${file}`
-            const params = { rackName: rackName, itemInfo: { name: file, publisher: publisher, description: '', series: series, path: path, publish_date: '' } }
-            dbOps.createItem(params)
-        })
-    })
-
-}
 
 
